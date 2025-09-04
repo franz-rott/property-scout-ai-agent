@@ -1,0 +1,22 @@
+{
+  "appName": "Greenzero Property Scout AI",
+  "cronSchedule": "0 8 * * *",
+  "immoScout": {
+    "baseUrl": "https://api.immoscout24.de/v1",
+    "filters": {
+      "region": "Nordrhein-Westfalen",
+      "minSizeSqm": 5000,
+      "maxPricePerSqm": 150,
+      "plotTypes": ["building", "agricultural", "commercial"]
+    }
+  },
+  "serpApi": {
+    "baseUrl": "https://serpapi.com"
+  },
+  "copernicus": {
+    "baseUrl": "https://land.copernicus.eu/api/v1"
+  },
+  "inspire": {
+    "baseUrl": "https://inspire-geoportal.ec.europa.eu/api"
+  }
+}
