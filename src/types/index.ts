@@ -82,3 +82,4 @@ export const AggregatedEvaluationSchema = z.object({
   executiveSummary: z.string(),
 });
 export type AggregatedEvaluation = z.infer<typeof AggregatedEvaluationSchema>;
+

@@ -1,41 +1,77 @@
 // src/agents/legal/index.ts
 import { ChatOpenAI } from '@langchain/openai';
-import { PropertyListing, LegalEvaluation, LegalEvaluationSchema } from '../../types';
+import {
+  PropertyListing,
+  LegalEvaluation,
+  LegalEvaluationSchema,
+} from '../../types';
 import { inspireApiTool } from '../../tools/inspire-api';
 import { serpApiTool } from '../../tools/serp-api';
-import { createSpecialistAgent } from '../agent-factory';
 
 const llm = new ChatOpenAI({ modelName: 'gpt-4-turbo', temperature: 0 });
 
 const systemPrompt = `
 You are a legal expert specializing in German land use and environmental law for Greenzero.
-Your task is to evaluate the legal viability of acquiring a plot of land.
+Your task is to evaluate the legal viability of acquiring a plot of land based on the provided data.
 
-Instructions:
-1. You will be given property details. Use your tools to investigate.
-2. Use the 'getRegulatoryData' tool with the property's coordinates to check zoning and protected area status.
-3. Use the 'webSearch' tool if you need to research specific local regulations ('Bebauungsplan'), water protection laws ('Wasserschutzgebiet'), or recent legal news relevant to the area.
-4. Analyze the data to assess:
-   - Zoning Compliance: Is the land zoned appropriately for ecological projects?
-   - Protected Area Status: Is the land part of a protected area (e.g., Natura 2000) that would restrict its use?
-   - Potential Restrictions: Identify any other potential legal hurdles or restrictions.
-5. Provide a score from 0 (major legal barriers) to 100 (legally straightforward).
-6. Summarize your findings concisely.
-7. You MUST output your final evaluation as a raw JSON object that strictly follows the provided schema. Do not add any extra text, formatting, or markdown like \`\`\`json.
+Analyze the data to assess:
+ - Zoning Compliance: Is the land zoned appropriately for ecological projects?
+ - Protected Area Status: Is the land part of a protected area (e.g., Natura 2000) that would restrict its use?
+ - Potential Restrictions: Identify any other potential legal hurdles or restrictions.
+
+Provide a score from 0 (major legal barriers) to 100 (legally straightforward) and summarize your findings concisely.
+
+You MUST provide your response as a single, valid JSON object that strictly adheres to the following structure. Do NOT add any text or formatting outside of the JSON object.
+
+### REQUIRED JSON OUTPUT STRUCTURE ###
+{
+  "score": <number (0-100)>,
+  "summary": "<string>",
+  "details": {
+    "zoningCompliance": "<string>",
+    "protectedAreaStatus": "<string>",
+    "potentialRestrictions": ["<string>", "<string>"]
+  }
+}
+Note: If there are no potential restrictions, provide an empty array: [].
 `;
 
 export async function evaluateLegal(
   listing: PropertyListing
 ): Promise<LegalEvaluation> {
-  const agent = await createSpecialistAgent({
-    llm: llm, // Pass the original LLM instance
-    tools: [inspireApiTool, serpApiTool],
-    systemPrompt,
+  // 1. Gather all necessary data from the tools.
+  const regulatoryData = await inspireApiTool.func({
+    latitude: listing.geoCoordinates!.latitude,
+    longitude: listing.geoCoordinates!.longitude,
   });
 
-  const input = `Evaluate the following property: ${JSON.stringify(listing)}`;
-  const result = await agent.invoke({ input });
+  const webSearchData = await serpApiTool.func({
+    query: `local land use regulations (Bebauungsplan) ${listing.address.city}`,
+  });
 
-  // The agent's output is a string, which we parse into our structured type
-  return LegalEvaluationSchema.parse(JSON.parse(result.output));
+  // 2. Bind the Zod schema to the LLM.
+  const structuredLlm = llm.withStructuredOutput(LegalEvaluationSchema, {
+    name: 'legal_evaluation',
+  });
+
+  // 3. Create a detailed prompt with the fetched data.
+  const prompt = `
+    ${systemPrompt}
+
+    Please evaluate the following property:
+    \`\`\`json
+    ${JSON.stringify(listing, null, 2)}
+    \`\`\`
+
+    Use the following data gathered from our tools to inform your evaluation:
+    - Regulatory Data: ${regulatoryData}
+    - Web Search for local context: ${webSearchData}
+
+    Based on all this information, provide your complete legal evaluation as a single JSON object.
+  `;
+
+  // 4. Invoke the model to get the structured result.
+  const result = await structuredLlm.invoke(prompt);
+
+  return result;
 }

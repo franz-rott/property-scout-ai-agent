@@ -1,6 +1,7 @@
 // src/agents/orchestrator/graph.ts
 import { StateGraph, END } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
+import { z } from 'zod'; // Import Zod
 import {
   PropertyListing,
   EcoImpactEvaluation,
@@ -8,6 +9,7 @@ import {
   FinanceEvaluation,
   AggregatedEvaluation,
   AggregatedEvaluationSchema,
+  RecommendationEnum, // Import the recommendation enum
 } from '../../types';
 import logger from '../../utils/logger';
 import { evaluateEcoImpact } from '../eco-impact';
@@ -44,20 +46,38 @@ const runSpecialistEvaluations = async (
   return { ecoEvaluation, legalEvaluation, financeEvaluation };
 };
 
-// The aggregator node remains the same.
+// Define a new, smaller schema for just the LLM's output
+const AggregatorOutputSchema = z.object({
+  overallScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .describe('The final weighted score for the property.'),
+  recommendation: RecommendationEnum.describe(
+    'The final recommendation for the property.'
+  ),
+  executiveSummary: z
+    .string()
+    .describe('The final executive summary explaining the recommendation.'),
+});
+
+// The aggregator node, now refactored for reliability.
 const runAggregator = async (
   state: AgentState
 ): Promise<Partial<AgentState>> => {
   logger.info('---RUNNING AGGREGATOR---');
-  const aggregatorLlm = llm.withStructuredOutput(AggregatedEvaluationSchema);
+
+  // Step 1: Use the LLM for reasoning and summarization only.
+  const aggregatorLlm = llm.withStructuredOutput(AggregatorOutputSchema);
+
   const prompt = `
-  You are the lead strategist at Greenzero. Your job is to synthesize the evaluations from the ECO, Legal, and Finance teams into a final, decisive recommendation.
+  You are the lead strategist at Greenzero. Your job is to synthesize the evaluations from the ECO, Legal, and Finance teams into a final score, recommendation, and summary.
 
   Here are the inputs from your teams:
-  - Property Details: ${JSON.stringify(state.propertyListing, null, 2)}
   - ECO Evaluation: ${JSON.stringify(state.ecoEvaluation, null, 2)}
   - Legal Evaluation: ${JSON.stringify(state.legalEvaluation, null, 2)}
   - Finance Evaluation: ${JSON.stringify(state.financeEvaluation, null, 2)}
+  
   Your Task:
   1.  Calculate an 'overallScore' (0-100). Weight the scores as follows: ECO (50%), Legal (30%), Finance (20%). A low legal score (<40) should heavily penalize the overall score.
   2.  Provide a final 'recommendation' based on the overall score:
@@ -66,9 +86,26 @@ const runAggregator = async (
       - 50-69: NEUTRAL
       - < 50: NOT_RECOMMENDED
   3.  Write a concise 'executiveSummary' that explains your reasoning, highlights the key opportunities and risks, and justifies the final recommendation.
-  4.  Ensure the final output is a single JSON object matching the required schema. Include the listing ID and the full details of the property and sub-evaluations.
+  
+  Provide ONLY these three fields in a valid JSON object.
   `;
-  const finalEvaluation = await aggregatorLlm.invoke(prompt);
+  
+  const llmResult = await aggregatorLlm.invoke(prompt);
+
+  // Step 2: Assemble the final object in code for 100% reliability.
+  const finalEvaluation: AggregatedEvaluation = {
+    listingId: state.propertyListing!.id,
+    propertyDetails: state.propertyListing!,
+    evaluations: {
+      ecoImpact: state.ecoEvaluation!,
+      legal: state.legalEvaluation!,
+      finance: state.financeEvaluation!,
+    },
+    overallScore: llmResult.overallScore,
+    recommendation: llmResult.recommendation,
+    executiveSummary: llmResult.executiveSummary,
+  };
+
   return { finalEvaluation };
 };
 
