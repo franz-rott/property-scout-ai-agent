@@ -18,6 +18,10 @@ export class McpClient {
     this.httpClient = axios.create({
       baseURL,
       headers: { 'Content-Type': 'application/json' },
+      // **FIX START**: Add a timeout to prevent requests from hanging indefinitely.
+      // 15 seconds is a generous amount of time for a container-to-container call.
+      timeout: 15000,
+      // **FIX END**
     });
   }
 
@@ -61,7 +65,14 @@ export class McpClient {
       }
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        logger.error({ error }, `HTTP error calling MCP server: ${error.message}`);
+        // This will now catch network errors AND timeouts
+        logger.error({
+            error: {
+                message: error.message,
+                code: error.code,
+                url: error.config?.url
+            }
+        }, `HTTP error calling MCP server: ${error.message}`);
         throw new Error(`Failed to communicate with MCP server: ${error.message}`);
       }
       // Re-throw errors from the MCP error response or other unexpected errors
