@@ -4,10 +4,18 @@ import { z } from 'zod';
 import { McpClient } from '../mcp/client';
 import config from '../utils/config';
 
-const serpApiClient = new McpClient(
-  // Use the Docker service name 'serpapi-server'
-  `http://serpapi-server:${config.mcpPorts.serpApi}`
-);
+// Use environment variable for hostname, defaulting to 'localhost' for local dev
+const MCP_HOSTNAME = process.env.MCP_HOSTNAME || 'localhost';
+
+// When running in Docker, use the service name instead of localhost
+const getServiceUrl = (): string => {
+  if (MCP_HOSTNAME === 'docker') {
+    return `http://serpapi-server:${config.mcpPorts.serpApi}`;
+  }
+  return `http://localhost:${config.mcpPorts.serpApi}`;
+};
+
+const serpApiClient = new McpClient(getServiceUrl());
 
 export const serpApiTool = new DynamicStructuredTool({
   name: 'webSearch',

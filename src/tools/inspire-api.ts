@@ -4,10 +4,18 @@ import { z } from 'zod';
 import { McpClient } from '../mcp/client';
 import config from '../utils/config';
 
-const inspireClient = new McpClient(
-  // Use the Docker service name 'inspire-server'
-  `http://inspire-server:${config.mcpPorts.inspire}`
-);
+// Use environment variable for hostname, defaulting to 'localhost' for local dev
+const MCP_HOSTNAME = process.env.MCP_HOSTNAME || 'localhost';
+
+// When running in Docker, use the service name instead of localhost
+const getServiceUrl = (): string => {
+  if (MCP_HOSTNAME === 'docker') {
+    return `http://inspire-server:${config.mcpPorts.inspire}`;
+  }
+  return `http://localhost:${config.mcpPorts.inspire}`;
+};
+
+const inspireClient = new McpClient(getServiceUrl());
 
 export const inspireApiTool = new DynamicStructuredTool({
   name: 'getRegulatoryData',

@@ -1,53 +1,93 @@
-# docker-compose.yml
+# docker-compose.yml (Fixed Version)
+
 services:
   agent-runner:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: property-scout-agent-image
     container_name: agent-runner
+    env_file:
+      - .env
+    environment:
+      - MCP_HOSTNAME=docker
     depends_on:
       - immoscout-server
       - serpapi-server
       - copernicus-server
       - inspire-server
-    # This block passes the .env file variables into the container
-    environment:
-      - LOG_LEVEL=${LOG_LEVEL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - PORT_IMMOSCOUT=3001
-      - PORT_SERPAPI=3002
-      - PORT_COPERNUCUS=3003
-      - PORT_INSPIRE=3004
     volumes:
       - ./evaluations:/app/dist/evaluations
     command: "node dist/index.js"
+    ports:
+      - "3000:3000"
+    networks:
+      - agent-network
 
   immoscout-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: property-scout-agent-image
     container_name: immoscout-server
-    # FIX: Add the environment block here
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MCP_HOSTNAME=docker
     command: "node dist/mcp/servers/immoscout-server.js"
+    ports:
+      - "3001:3001"
+    networks:
+      - agent-network
 
   serpapi-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: property-scout-agent-image
     container_name: serpapi-server
-    # FIX: Add the environment block here
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MCP_HOSTNAME=docker
     command: "node dist/mcp/servers/serpapi-server.js"
+    ports:
+      - "3002:3002"
+    networks:
+      - agent-network
 
   copernicus-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: property-scout-agent-image
     container_name: copernicus-server
-    # FIX: Add the environment block here
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MCP_HOSTNAME=docker
     command: "node dist/mcp/servers/copernicus-server.js"
+    ports:
+      - "3003:3003"
+    networks:
+      - agent-network
 
   inspire-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: property-scout-agent-image
     container_name: inspire-server
-    # FIX: Add the environment block here
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MCP_HOSTNAME=docker
     command: "node dist/mcp/servers/inspire-server.js"
+    ports:
+      - "3004:3004"
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge

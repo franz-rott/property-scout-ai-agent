@@ -1,9 +1,17 @@
 // src/types/index.ts
 import { z } from 'zod';
+import { BaseMessage } from '@langchain/core/messages';
+
+// FIX: Manually define MessagesState to remove dependency on a specific library export path.
+// This makes the code more robust against library updates.
+export type MessagesState = { messages: Array<BaseMessage> };
+
+// We use our manually defined MessagesState for the graph state.
+export type AgentState = MessagesState;
 
 // Schema for a raw property listing fetched from the ImmoScout24 API
 export const PropertyListingSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(), // ID might not be a UUID from a scrape
   title: z.string(),
   address: z.object({
     street: z.string(),
@@ -17,14 +25,16 @@ export const PropertyListingSchema = z.object({
   plotType: z.enum(['building', 'agricultural', 'commercial']),
   url: z.string().url(),
   retrievedAt: z.string().datetime(),
-  geoCoordinates: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }).optional(),
+  geoCoordinates: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+    })
+    .optional(),
 });
 export type PropertyListing = z.infer<typeof PropertyListingSchema>;
 
-// Schemas for individual agent evaluations
+// Schemas for individual agent evaluations (still useful for context)
 const BaseEvaluationSchema = z.object({
   score: z.number().min(0).max(100),
   summary: z.string(),
@@ -68,7 +78,7 @@ export const RecommendationEnum = z.enum([
 ]);
 export type Recommendation = z.infer<typeof RecommendationEnum>;
 
-// Final aggregated output schema from the Orchestrator
+// Final aggregated output schema from the Orchestrator (kept for context)
 export const AggregatedEvaluationSchema = z.object({
   listingId: z.string().uuid(),
   propertyDetails: PropertyListingSchema,
@@ -82,4 +92,3 @@ export const AggregatedEvaluationSchema = z.object({
   executiveSummary: z.string(),
 });
 export type AggregatedEvaluation = z.infer<typeof AggregatedEvaluationSchema>;
-

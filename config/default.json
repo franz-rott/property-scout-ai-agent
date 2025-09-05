@@ -1,8 +1,8 @@
 {
-  "appName": "Greenzero Property Scout AI",
-  "cronSchedule": "0 8 * * *",
+  "appName": "property-scout-ai-agent",
+  "cronSchedule": "0 9 * * *",
   "immoScout": {
-    "baseUrl": "https://api.immoscout24.de/v1",
+    "baseUrl": "https://api.immobilienscout24.de",
     "filters": {
       "region": "Nordrhein-Westfalen",
       "minSizeSqm": 5000,
@@ -14,9 +14,9 @@
     "baseUrl": "https://serpapi.com"
   },
   "copernicus": {
-    "baseUrl": "https://land.copernicus.eu/api/v1"
+    "baseUrl": "https://land.copernicus.eu"
   },
   "inspire": {
-    "baseUrl": "https://inspire-geoportal.ec.europa.eu/api"
+    "baseUrl": "https://inspire-geoportal.ec.europa.eu"
   }
 }

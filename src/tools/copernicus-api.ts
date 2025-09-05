@@ -4,10 +4,18 @@ import { z } from 'zod';
 import { McpClient } from '../mcp/client';
 import config from '../utils/config';
 
-const copernicusClient = new McpClient(
-  // Use the Docker service name 'copernicus-server'
-  `http://copernicus-server:${config.mcpPorts.copernicus}`
-);
+// Use environment variable for hostname, defaulting to 'localhost' for local dev
+const MCP_HOSTNAME = process.env.MCP_HOSTNAME || 'localhost';
+
+// When running in Docker, use the service name instead of localhost
+const getServiceUrl = (): string => {
+  if (MCP_HOSTNAME === 'docker') {
+    return `http://copernicus-server:${config.mcpPorts.copernicus}`;
+  }
+  return `http://localhost:${config.mcpPorts.copernicus}`;
+};
+
+const copernicusClient = new McpClient(getServiceUrl());
 
 export const copernicusApiTool = new DynamicStructuredTool({
   name: 'getEnvironmentalData',
