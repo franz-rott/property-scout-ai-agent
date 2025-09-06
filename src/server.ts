@@ -64,16 +64,25 @@ app.post('/chat', async (req, res) => {
     }, {
       callbacks: [{
         handleToolStart: (tool: any, input: string) => {
-          const toolName = tool?.name || 'unknown';
-          logger.info(`Tool started: ${toolName}`);
-          currentExecutionTrace.push({
-            type: 'tool',
-            tool: toolName,
-            input: input,
-            output: null,
-            timestamp: new Date().toISOString()
-          });
-        },
+            // Extract tool name more reliably
+            const toolName = tool?.name || tool?.id || 'unknown';
+            logger.info(`Tool started: ${toolName}`);
+            
+            // Don't create duplicate traces
+            const existingTrace = currentExecutionTrace.find(
+                t => t.type === 'tool' && !t.output && JSON.stringify(t.input) === JSON.stringify(input)
+            );
+            
+            if (!existingTrace) {
+                currentExecutionTrace.push({
+                type: 'tool',
+                tool: toolName,
+                input: typeof input === 'string' ? JSON.parse(input) : input,
+                output: null,
+                timestamp: new Date().toISOString()
+                });
+            }
+            },
         handleToolEnd: (output: any) => {
           const lastTrace = currentExecutionTrace[currentExecutionTrace.length - 1];
           if (lastTrace && lastTrace.type === 'tool' && !lastTrace.output) {
