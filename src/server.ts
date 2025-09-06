@@ -14,87 +14,83 @@ const PORT = process.env.PORT || 3000;
 const sessions: Record<string, { messages: BaseMessage[] }> = {};
 
 app.post('/chat', async (req, res) => {
-  // **FIX START**: Add logging to trace execution
-  logger.info('[/chat] endpoint hit. Processing request...');
-  // **FIX END**
+  logger.info('[/chat] endpoint hit. Processing request...');
 
-  const { sessionId, input } = req.body;
+  const { sessionId, input } = req.body;
 
-  if (!input) {
-    return res.status(400).json({ error: 'Input message is required.' });
-  }
+  if (!input) {
+    return res.status(400).json({ error: 'Input message is required.' });
+  }
 
-  const currentSessionId = sessionId || uuidv4();
-  if (!sessions[currentSessionId]) {
-    sessions[currentSessionId] = { messages: [] };
-    logger.info(`New session created: ${currentSessionId}`);
-  }
+  const currentSessionId = sessionId || uuidv4();
+  if (!sessions[currentSessionId]) {
+    sessions[currentSessionId] = { messages: [] };
+    logger.info(`New session created: ${currentSessionId}`);
+  }
 
-  const sessionMessages = sessions[currentSessionId].messages;
+  const sessionMessages = sessions[currentSessionId].messages;
+  // Add the new user message to the history for this call
+  const updatedMessages = [...sessionMessages, new HumanMessage(input)];
 
-  try {
-    logger.info({ sessionId: currentSessionId, input }, 'Attempting to invoke agent graph stream...');
-    // We pass the entire message history to the graph.
-    const stream = await appGraph.stream({
-      messages: [...sessionMessages, new HumanMessage(input)],
-    });
-    logger.info('Agent graph stream successfully created. Streaming response...');
+  try {
+    logger.info({ sessionId: currentSessionId, input }, 'Invoking agent graph...');
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Transfer-Encoding', 'chunked');
+    const finalState = await appGraph.invoke({
+      messages: updatedMessages,
+    });
 
-    let finalMessage: AIMessage | null = null;
-    for await (const event of stream) {
-      if (event.agent?.messages) {
-        const message = event.agent.messages[0];
-        if (message instanceof AIMessage) {
-          finalMessage = message;
-          res.write(JSON.stringify(message.content));
-        }
-      }
-    }
+    logger.info('Agent graph invocation complete.');
 
-    logger.info('Stream finished.');
-    // Update the session history with the latest exchange.
-    sessions[currentSessionId].messages.push(new HumanMessage(input));
-    if (finalMessage) {
-      sessions[currentSessionId].messages.push(finalMessage);
-    }
+    const lastMessage = finalState.messages[finalState.messages.length - 1];
 
-    res.end();
-  } catch (error: unknown) {
-    logger.error('Error processing chat request.');
+    // **FIX START**: Replace the fragile `_getType()` check with the robust `instanceof`.
+    if (lastMessage && lastMessage instanceof AIMessage && lastMessage.content) {
+    // **FIX END**
+      // Add the user's message and the AI's final response to the session history
+      sessions[currentSessionId].messages.push(new HumanMessage(input));
+      sessions[currentSessionId].messages.push(lastMessage);
 
-    if (error instanceof Error) {
-      logger.error(
-        { message: error.message, stack: error.stack, name: error.name },
-        'Caught a standard Error:'
-      );
-    } else {
-      logger.error(
-        { rawError: JSON.stringify(error, null, 2) },
-        'Caught a non-standard error type:'
-      );
-    }
+      res.status(200).json({
+        sessionId: currentSessionId,
+        output: lastMessage.content,
+      });
+    } else {
+      logger.error(
+        { finalState },
+        'Graph execution finished, but the last message was not a valid AI response.'
+      );
+      res
+        .status(500)
+        .json({ error: 'Agent did not produce a valid response.' });
+    }
+  } catch (error: unknown) {
+    logger.error('Error processing chat request.');
 
-    // Check if headers have been sent before trying to send another response
-    if (!res.headersSent) {
-        res.status(500).json({ error: 'An internal error occurred.' });
-    } else {
-        res.end(); // End the connection if headers are already sent
-    }
-  }
+    if (error instanceof Error) {
+      logger.error(
+        { message: error.message, stack: error.stack, name: error.name },
+        'Caught a standard Error:'
+      );
+    } else {
+      logger.error(
+        { rawError: JSON.stringify(error, null, 2) },
+        'Caught a non-standard error type:'
+      );
+    }
+
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'An internal error occurred.' });
+    }
+  }
 });
 
 export function startServer() {
-  app.listen(PORT, () => {
-    logger.info(`🤖 Analyst Assistant server listening on http://localhost:${PORT}`);
-    logger.info('Send POST requests to http://localhost:3000/chat');
-    logger.info(
-      'Example curl command:'
-    );
-    logger.info(
-      `Invoke-WebRequest -Uri http://localhost:3000/chat -Method POST -Headers @{'Content-Type' = 'application/json'} -Body '{"input": "Hello, can you look at a property for me? https://www.immobilienscout24.de/expose/123456789"}`
-    );
-  });
+  app.listen(PORT, () => {
+    logger.info(`🤖 Analyst Assistant server listening on http://localhost:${PORT}`);
+    logger.info('Send POST requests to http://localhost:3000/chat');
+    logger.info('Example curl command:');
+    logger.info(
+      `Invoke-WebRequest -Uri http://localhost:3000/chat -Method POST -Headers @{'Content-Type' = 'application/json'} -Body '{"input": "Hello, can you look at a property for me? https://www.immobilienscout24.de/expose/123456789"}'`
+    );
+  });
 }

@@ -1,10 +1,12 @@
 // src/agents/orchestrator/agent.ts
 import { ChatOpenAI } from '@langchain/openai';
-import { createOpenAIToolsAgent } from 'langchain/agents';
 import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
+// **FIX START**: The complex parser is not needed and is the source of the error.
+// import { OpenAIToolsAgentOutputParser } from 'langchain/agents/openai/output_parser';
+// **FIX END**
 import {
   ecoImpactTool,
   financeTool,
@@ -36,24 +38,21 @@ Your Process:
 5. You are conversational. Maintain a friendly and helpful tone. Remember the context of the conversation.
 `;
 
-// This function creates the agent RUNNABLE, not an AgentExecutor.
 async function createOrchestratorAgent(): Promise<Runnable> {
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', systemPrompt],
-    // The graph will pass the full message history in the 'messages' variable.
     new MessagesPlaceholder('messages'),
-    // Add the required placeholder for agent intermediate steps.
-    new MessagesPlaceholder({ variableName: 'agent_scratchpad' }),
   ]);
 
-  const agent = await createOpenAIToolsAgent({
-    llm,
-    tools,
-    prompt,
-  });
+  const llmWithTools = llm.bindTools(tools);
+
+  // **FIX START**: The agent is now a simple chain. The LLM with tools
+  // already outputs a standard AIMessage that the graph can understand.
+  // We remove the final `.pipe(new OpenAIToolsAgentOutputParser())`.
+  const agent = prompt.pipe(llmWithTools);
+  // **FIX END**
 
   return agent;
 }
 
-// Export the promise for the agent runnable, not the agent executor.
 export const orchestratorAgentRunnablePromise = createOrchestratorAgent();
