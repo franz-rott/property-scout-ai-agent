@@ -17,8 +17,12 @@ COPY . .
 # Build the TypeScript code
 RUN npm run build
 
-# Expose the ports for the MCP servers
-EXPOSE 3001 3002 3003 3004
+# Create public directory if it doesn't exist and copy frontend files
+RUN mkdir -p /app/public
+COPY public /app/public
+
+# Expose the main application port and MCP server ports
+EXPOSE 3000 3001 3002 3003 3004
 
 # The 'command' in docker-compose.yml will determine what runs.
 CMD ["node", "dist/index.js"]
