@@ -8,7 +8,7 @@ This project, the **Land Scouting Agent**, is an autonomous AI system designed t
 
 This solution demonstrates how multi-agent AI architectures can augment decision-making in sustainable land investment, fulfilling the core requirements of the AI Automation Engineer role.
 
------
+---
 
 ## 🎯 System Goals
 
@@ -19,7 +19,7 @@ The primary goal of this project is to build a `Flächensuch-Agent` that:
 3.  **Provides Actionable Insights**: Produces a structured, transparent evaluation for each property that Greenzero can use to prioritize acquisitions.
 4.  **Enables Conversation**: Allows for user conversations, including asking follow-up and detail questions about the evaluations.
 
------
+---
 
 ## 🏗️ Technical Architecture and Logic
 
@@ -30,9 +30,9 @@ The system is built as a multi-agent cooperative architecture, where a central *
 1.  **User Input**: The user provides a property listing URL via a chat interface.
 2.  **Orchestrator Agent**: The main agent receives the request and recognizes the need to get property details. It calls the `ImmoScout` tool to scrape the data.
 3.  **Dispatch**: The Orchestrator then dispatches the property details to three specialist sub-agents:
-      * **🌱 ECO Impact Agent**: Evaluates the ecological potential of the land by using the `Copernicus` and `SerpAPI` tools.
-      * **⚖️ Legal Compliance Agent**: Checks for legal restrictions and zoning laws by using the `INSPIRE` and `SerpAPI` tools.
-      * **💰 Financial Viability Agent**: Analyzes the asking price against market data using the `SerpAPI` tool.
+    * **🌱 ECO Impact Agent**: Evaluates the ecological potential of the land by using the `Copernicus` and `SerpAPI` tools.
+    * **⚖️ Legal Compliance Agent**: Checks for legal restrictions and zoning laws by using the `INSPIRE` and `SerpAPI` tools.
+    * **💰 Financial Viability Agent**: Analyzes the asking price against market data using the `SerpAPI` tool.
 4.  **Aggregation**: Once all sub-agents have completed their tasks, the Orchestrator aggregates their individual evaluations (scores and summaries).
 5.  **Final Output**: The Orchestrator synthesizes the findings into a single, comprehensive report presented to the user.
 
@@ -75,7 +75,7 @@ graph TD
     D & E & F --> B
     B --> C
     C --> A
-```
+````
 
 This diagram illustrates the flow of a user request from the `Orchestrator Agent` to the `Specialist Sub-Agents` and their respective `MCP Tool Servers`, with the final report being returned to the user.
 
@@ -114,7 +114,7 @@ The project follows a modular structure to ensure maintainability and clarity.
 1.  Clone the repository:
 
     ```bash
-    git clone https://github.com/your-username/greenzero-ai-agent.git
+    git clone [https://github.com/your-username/greenzero-ai-agent.git](https://github.com/your-username/greenzero-ai-agent.git)
     cd greenzero-ai-agent
     ```
 
@@ -139,6 +139,17 @@ For a production-ready setup with microservices:
 ```bash
 docker-compose up --build
 ```
+
+-----
+
+## 📹 Video Demonstration
+
+\<div align="center"\>
+\<h3\>Video Demonstration\</h3\>
+\<a href="./assets/demo\_property\_scout\_ai\_agent.mp4"\>
+Watch a video demonstration of the project here\!
+\</a\>
+\</div\>
 
 -----
 
