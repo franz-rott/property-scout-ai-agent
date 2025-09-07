@@ -2,64 +2,10 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { AgentExecutor } from 'langchain/agents';
-import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import { ecoAgentExecutorPromise } from '../agents/eco-impact';
 import { legalAgentExecutorPromise } from '../agents/legal';
 import { financeAgentExecutorPromise } from '../agents/finance';
 import logger from '../utils/logger';
-
-// IMPROVEMENT: A more robust callback handler that uses run IDs to correctly
-// track parallel tool calls within a single specialist agent run.
-class ToolCollectorCallback extends BaseCallbackHandler {
-  name = "tool-collector";
-  private runs = new Map<string, any>();
-  private steps: Array<Record<string, any>> = [];
-
-  constructor() {
-    super();
-    this.runs = new Map();
-    this.steps = [];
-  }
-
-  handleToolStart(_tool: any, input: string, runId: string): void {
-    let parsedInput;
-    try {
-      parsedInput = JSON.parse(input);
-    } catch {
-      parsedInput = input; // Fallback for non-JSON string inputs
-    }
-
-    this.runs.set(runId, {
-      tool: _tool.name,
-      input: parsedInput,
-    });
-  }
-
-  handleToolEnd(output: string, runId: string): void {
-    const run = this.runs.get(runId);
-    if (!run) return;
-
-    let parsedOutput;
-    try {
-      parsedOutput = JSON.parse(output);
-    } catch {
-      parsedOutput = output;
-    }
-    
-    // Add the completed run to our list of steps
-    this.steps.push({
-      ...run,
-      output: parsedOutput,
-    });
-
-    // Clean up the map
-    this.runs.delete(runId);
-  }
-
-  getSteps(): Array<Record<string, any>> {
-    return this.steps;
-  }
-}
 
 // Cache the agents after they are created once.
 let ecoAgent: AgentExecutor;
@@ -87,18 +33,22 @@ async function runSpecialistAgent(
     agent = await agentPromise;
   }
   
-  const collectorCallback = new ToolCollectorCallback();
   const result = await agent.invoke({
     input: `Evaluate the property with these details: ${propertyDetails}`,
-  }, {
-    callbacks: [collectorCallback]
   });
+
+  // Map intermediate steps to include tool, input, output
+  const mappedSteps = result.intermediateSteps ? result.intermediateSteps.map((step: any) => ({
+    tool: step.action.tool,
+    input: step.action.toolInput,
+    output: step.observation,
+  })) : [];
 
   return {
     agent,
     result: {
       output: result.output,
-      intermediateSteps: collectorCallback.getSteps(),
+      intermediateSteps: mappedSteps,
     }
   };
 }

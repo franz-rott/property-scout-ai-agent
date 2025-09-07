@@ -25,6 +25,7 @@ interface ExecutionTrace {
   agent?: string;
   input: any;
   output: any;
+  children?: ExecutionTrace[];  // NEW: Add children for hierarchical structure
 }
 
 const sessions: Record<string, Session> = {};
@@ -47,67 +48,60 @@ const TOOL_NAMES: Record<string, string> = {
 /**
  * Builds a clean execution trace from the final message history,
  * including and correctly naming nested steps from specialist agents.
+ * Now builds a hierarchical structure to represent depth.
  */
 function buildTraceFromMessages(messages: BaseMessage[]): ExecutionTrace[] {
-    const trace: ExecutionTrace[] = [];
-    const toolCallMap = new Map<string, any>();
+  const trace: ExecutionTrace[] = [];
+  const toolCallMap = new Map<string, any>();
 
-    for (const message of messages) {
-        if (message instanceof AIMessage && Array.isArray(message.tool_calls)) {
-            for (const call of message.tool_calls) {
-                if (!call.id) continue;
-                toolCallMap.set(call.id, {
-                    name: call.name,
-                    args: call.args,
-                });
-            }
-        } else if (message instanceof ToolMessage && message.tool_call_id) {
-            const toolCall = toolCallMap.get(message.tool_call_id);
-            if (!toolCall) continue;
+  for (const message of messages) {
+    if (message instanceof AIMessage && Array.isArray(message.tool_calls)) {
+      for (const call of message.tool_calls) {
+        if (!call.id) continue;
+        toolCallMap.set(call.id, {
+          name: call.name,
+          args: call.args,
+        });
+      }
+    } else if (message instanceof ToolMessage && message.tool_call_id) {
+      const toolCall = toolCallMap.get(message.tool_call_id);
+      if (!toolCall) continue;
 
-            const isAgent = !!SPECIALIST_AGENTS[toolCall.name];
-            const name = isAgent
-                ? SPECIALIST_AGENTS[toolCall.name]
-                : (TOOL_NAMES[toolCall.name] || toolCall.name);
+      const isAgent = !!SPECIALIST_AGENTS[toolCall.name];
+      const name = isAgent
+        ? SPECIALIST_AGENTS[toolCall.name]
+        : (TOOL_NAMES[toolCall.name] || toolCall.name);
 
-            let parsedContent;
-            if (typeof message.content === 'string') {
-                try { parsedContent = JSON.parse(message.content); } catch { parsedContent = message.content; }
-            } else {
-                parsedContent = message.content;
-            }
-            
-            if (isAgent && typeof parsedContent === 'object' && parsedContent.finalOutput) {
-                trace.push({
-                    type: 'agent',
-                    agent: name,
-                    input: toolCall.args,
-                    output: parsedContent.finalOutput,
-                });
+      let parsedContent;
+      if (typeof message.content === 'string') {
+        try { parsedContent = JSON.parse(message.content); } catch { parsedContent = message.content; }
+      } else {
+        parsedContent = message.content;
+      }
+      
+      const entry: ExecutionTrace = {
+        type: isAgent ? 'agent' : 'tool',
+        [isAgent ? 'agent' : 'tool']: name,
+        input: toolCall.args,
+        output: isAgent ? parsedContent.finalOutput : parsedContent,
+      };
 
-                if (Array.isArray(parsedContent.intermediateSteps)) {
-                    for (const step of parsedContent.intermediateSteps) {
-                        // THIS IS THE FIX: Map the raw tool name (step.tool) to its friendly name.
-                        const friendlyToolName = TOOL_NAMES[step.tool] || step.tool;
-                        trace.push({
-                            type: 'tool',
-                            tool: friendlyToolName,
-                            input: step.input,
-                            output: step.output
-                        });
-                    }
-                }
-            } else {
-                trace.push({
-                    type: 'tool',
-                    tool: name,
-                    input: toolCall.args,
-                    output: parsedContent,
-                });
-            }
-        }
+      if (isAgent && Array.isArray(parsedContent.intermediateSteps)) {
+        entry.children = parsedContent.intermediateSteps.map((step: any) => {
+          const friendlyToolName = TOOL_NAMES[step.tool] || step.tool;
+          return {
+            type: 'tool',
+            tool: friendlyToolName,
+            input: step.input,
+            output: step.output,
+          };
+        });
+      }
+
+      trace.push(entry);
     }
-    return trace;
+  }
+  return trace;
 }
 
 

@@ -194,7 +194,7 @@
             border-radius: 12px;
             line-height: 1.6;
         }
-        
+         
         /* IMPROVEMENT: Added styles for rendered markdown */
         .message-bubble h3 {
             margin-top: 1rem;
@@ -580,34 +580,45 @@
                 traceDiv.className = 'execution-trace';
                 traceDiv.style.display = showDebug ? 'block' : 'none';
                 
-                executionTrace.forEach(trace => {
+                // NEW: Recursive rendering for hierarchical traces
+                function renderTraceItem(trace, parent, level = 0) {
                     const traceItem = document.createElement('div');
                     traceItem.className = 'trace-item';
+                    traceItem.style.marginLeft = `${level * 1.5}rem`;
                     
                     const header = document.createElement('div');
                     header.className = 'trace-header';
                     
-                    // IMPROVEMENT: Use different icons and clean names for agents vs tools
                     const icon = trace.type === 'agent' ? '🤖' : '🔧';
-                    const name = trace.agent || trace.tool;
+                    const name = trace.agent || trace.tool || 'Step';
                     header.textContent = `${icon} ${name}`;
                     traceItem.appendChild(header);
                     
                     if (trace.input) {
-                        const input = document.createElement('pre');
-                        input.className = 'trace-input';
-                        input.innerHTML = `<strong>Input:</strong>\n${formatTraceData(trace.input)}`;
-                        traceItem.appendChild(input);
+                        const inputPre = document.createElement('pre');
+                        inputPre.className = 'trace-input';
+                        inputPre.innerHTML = `<strong>Input:</strong>\n${formatTraceData(trace.input)}`;
+                        traceItem.appendChild(inputPre);
                     }
                     
                     if (trace.output) {
-                        const output = document.createElement('pre');
-                        output.className = 'trace-output';
-                        output.innerHTML = `<strong>Output:</strong>\n${formatTraceData(trace.output)}`;
-                        traceItem.appendChild(output);
+                        const outputPre = document.createElement('pre');
+                        outputPre.className = 'trace-output';
+                        outputPre.innerHTML = `<strong>Output:</strong>\n${formatTraceData(trace.output)}`;
+                        traceItem.appendChild(outputPre);
                     }
                     
-                    traceDiv.appendChild(traceItem);
+                    parent.appendChild(traceItem);
+                    
+                    if (trace.children && trace.children.length > 0) {
+                        trace.children.forEach(child => {
+                            renderTraceItem(child, parent, level + 1);
+                        });
+                    }
+                }
+                
+                executionTrace.forEach(topLevelTrace => {
+                    renderTraceItem(topLevelTrace, traceDiv);
                 });
                 
                 messageContent.appendChild(traceDiv);
@@ -636,3 +647,4 @@
     </script>
 </body>
 </html>
+

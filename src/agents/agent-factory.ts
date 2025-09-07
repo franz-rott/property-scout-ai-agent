@@ -31,5 +31,6 @@ export async function createSpecialistAgent({
     agent,
     tools,
     verbose: true,
+    returnIntermediateSteps: true,  // NEW: Enable returning intermediate steps directly
   });
 }
