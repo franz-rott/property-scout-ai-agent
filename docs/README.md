@@ -144,12 +144,12 @@ docker-compose up --build
 
 ## 📹 Video Demonstration
 
-\<div align="center"\>
-\<h3\>Video Demonstration\</h3\>
-\<a href="./assets/demo\_property\_scout\_ai\_agent.mp4"\>
-Watch a video demonstration of the project here\!
-\</a\>
-\</div\>
+<div align="center">
+  <h3>Video Demonstration</h3>
+  <a href="https://raw.githubusercontent.com/franz-rott/property-scout-ai-agent/main/assets/demo_property_scout_ai_agent.mp4">
+    Watch a video demonstration of the project here!
+  </a>
+</div>
 
 -----
 
