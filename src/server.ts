@@ -17,7 +17,6 @@ const PORT = process.env.PORT || 3000;
 // In-memory session storage for demonstration purposes.
 interface Session {
   messages: BaseMessage[];
-  executionTraces: ExecutionTrace[][];
 }
 
 interface ExecutionTrace {
@@ -26,10 +25,91 @@ interface ExecutionTrace {
   agent?: string;
   input: any;
   output: any;
-  timestamp: string;
 }
 
 const sessions: Record<string, Session> = {};
+
+// Map to track which tools are actually specialist agents
+const SPECIALIST_AGENTS: Record<string, string> = {
+  'evaluateEcoImpact': 'ECO Impact Agent',
+  'evaluateLegalCompliance': 'Legal Compliance Agent',
+  'evaluateFinancialViability': 'Financial Viability Agent'
+};
+
+// Map to track actual tool names
+const TOOL_NAMES: Record<string, string> = {
+  'scrapeImmoScoutListing': 'ImmoScout Scraper',
+  'getEnvironmentalData': 'Copernicus Environmental Data',
+  'getRegulatoryData': 'INSPIRE Regulatory Data',
+  'webSearch': 'Web Search (SerpAPI)'
+};
+
+/**
+ * Builds a clean execution trace from the final message history,
+ * including and correctly naming nested steps from specialist agents.
+ */
+function buildTraceFromMessages(messages: BaseMessage[]): ExecutionTrace[] {
+    const trace: ExecutionTrace[] = [];
+    const toolCallMap = new Map<string, any>();
+
+    for (const message of messages) {
+        if (message instanceof AIMessage && Array.isArray(message.tool_calls)) {
+            for (const call of message.tool_calls) {
+                if (!call.id) continue;
+                toolCallMap.set(call.id, {
+                    name: call.name,
+                    args: call.args,
+                });
+            }
+        } else if (message instanceof ToolMessage && message.tool_call_id) {
+            const toolCall = toolCallMap.get(message.tool_call_id);
+            if (!toolCall) continue;
+
+            const isAgent = !!SPECIALIST_AGENTS[toolCall.name];
+            const name = isAgent
+                ? SPECIALIST_AGENTS[toolCall.name]
+                : (TOOL_NAMES[toolCall.name] || toolCall.name);
+
+            let parsedContent;
+            if (typeof message.content === 'string') {
+                try { parsedContent = JSON.parse(message.content); } catch { parsedContent = message.content; }
+            } else {
+                parsedContent = message.content;
+            }
+            
+            if (isAgent && typeof parsedContent === 'object' && parsedContent.finalOutput) {
+                trace.push({
+                    type: 'agent',
+                    agent: name,
+                    input: toolCall.args,
+                    output: parsedContent.finalOutput,
+                });
+
+                if (Array.isArray(parsedContent.intermediateSteps)) {
+                    for (const step of parsedContent.intermediateSteps) {
+                        // THIS IS THE FIX: Map the raw tool name (step.tool) to its friendly name.
+                        const friendlyToolName = TOOL_NAMES[step.tool] || step.tool;
+                        trace.push({
+                            type: 'tool',
+                            tool: friendlyToolName,
+                            input: step.input,
+                            output: step.output
+                        });
+                    }
+                }
+            } else {
+                trace.push({
+                    type: 'tool',
+                    tool: name,
+                    input: toolCall.args,
+                    output: parsedContent,
+                });
+            }
+        }
+    }
+    return trace;
+}
+
 
 app.post('/chat', async (req, res) => {
   logger.info('[/chat] endpoint hit. Processing request...');
@@ -42,112 +122,34 @@ app.post('/chat', async (req, res) => {
 
   const currentSessionId = sessionId || uuidv4();
   if (!sessions[currentSessionId]) {
-    sessions[currentSessionId] = { 
+    sessions[currentSessionId] = {
       messages: [],
-      executionTraces: []
     };
     logger.info(`New session created: ${currentSessionId}`);
   }
 
   const session = sessions[currentSessionId];
-  // Add the new user message to the history for this call
   const updatedMessages = [...session.messages, new HumanMessage(input)];
-
-  // Create an array to collect execution traces for this request
-  const currentExecutionTrace: ExecutionTrace[] = [];
 
   try {
     logger.info({ sessionId: currentSessionId, input }, 'Invoking agent graph...');
 
     const finalState = await appGraphWithTrace.invoke({
       messages: updatedMessages,
-    }, {
-      callbacks: [{
-        handleToolStart: (tool: any, input: string) => {
-            // Extract tool name more reliably
-            const toolName = tool?.name || tool?.id || 'unknown';
-            logger.info(`Tool started: ${toolName}`);
-            
-            // Don't create duplicate traces
-            const existingTrace = currentExecutionTrace.find(
-                t => t.type === 'tool' && !t.output && JSON.stringify(t.input) === JSON.stringify(input)
-            );
-            
-            if (!existingTrace) {
-                currentExecutionTrace.push({
-                type: 'tool',
-                tool: toolName,
-                input: typeof input === 'string' ? JSON.parse(input) : input,
-                output: null,
-                timestamp: new Date().toISOString()
-                });
-            }
-            },
-        handleToolEnd: (output: any) => {
-          const lastTrace = currentExecutionTrace[currentExecutionTrace.length - 1];
-          if (lastTrace && lastTrace.type === 'tool' && !lastTrace.output) {
-            lastTrace.output = output;
-            logger.info(`Tool ended: ${lastTrace.tool}`);
-          }
-        },
-        handleAgentAction: (action: any) => {
-          logger.info(`Agent action:`, action);
-          if (action?.tool) {
-            const existingTrace = currentExecutionTrace.find(
-              t => t.tool === action.tool && !t.output
-            );
-            if (!existingTrace) {
-              currentExecutionTrace.push({
-                type: 'tool',
-                tool: action.tool,
-                input: action.toolInput || action.tool_input,
-                output: null,
-                timestamp: new Date().toISOString()
-              });
-            }
-          }
-        },
-        handleAgentEnd: (action: any) => {
-          logger.info(`Agent end:`, action);
-        },
-        handleLLMStart: (llm: any, prompts: string[]) => {
-          logger.debug(`LLM started with prompts`);
-        },
-        handleLLMEnd: (output: any) => {
-          logger.debug(`LLM ended`);
-        }
-      }]
     });
 
     logger.info('Agent graph invocation complete.');
 
-    // Extract tool messages from the final state for tracing
-    const toolMessages = finalState.messages.filter(
-      (msg: BaseMessage) => msg instanceof ToolMessage
-    );
-
-    // Enhance execution trace with tool message content
-    toolMessages.forEach((msg: ToolMessage) => {
-      const trace = currentExecutionTrace.find(
-        t => t.tool === msg.name && !t.output
-      );
-      if (trace) {
-        trace.output = msg.content;
-      }
-    });
-
     const lastMessage = finalState.messages[finalState.messages.length - 1];
 
     if (lastMessage && lastMessage instanceof AIMessage && lastMessage.content) {
-      // Add the user's message and the AI's final response to the session history
-      session.messages.push(new HumanMessage(input));
-      session.messages.push(lastMessage);
-      session.executionTraces.push(currentExecutionTrace);
+      session.messages = finalState.messages;
+      const executionTrace = buildTraceFromMessages(finalState.messages);
 
       res.status(200).json({
         sessionId: currentSessionId,
         output: lastMessage.content,
-        executionTrace: currentExecutionTrace.length > 0 ? currentExecutionTrace : undefined
+        executionTrace: executionTrace.length > 0 ? executionTrace : undefined
       });
     } else {
       logger.error(
