@@ -144,11 +144,10 @@ docker-compose up --build
 
 ## 📹 Video Demonstration
 
-\<div align="center"\>
-\<h3\>Demo\</h3\>
-\<img src="assets/demo.gif" alt="Watch a video demonstration of the Greenzero AI Agent on YouTube" style="width: 100%; max-width: 600px;"\>
-\</a\>
-\</div\>
+<div align="center">
+  <h3>Video Demonstration</h3>
+  <img src="assets/demo.gif" alt="A short demo of the Greenzero AI Agent in action, showing a user query and the agent's response with a structured evaluation." style="width: 100%; max-width: 600px;">
+</div>
 
 -----
 
@@ -162,5 +161,3 @@ The current implementation provides a robust and demonstrable proof of concept. 
   * **Enhanced Reporting**: Develop a more advanced reporting system to store, search, and visualize evaluations, potentially with a dashboard or database integration.
   * **Error Handling**: Implement more robust error handling for API failures and edge cases.
   * **Evals**: Develop robust evaluation metrics for progress and performance measurement.
-
-This project is not just about building a single agent, but about establishing a scalable, maintainable, and powerful foundation for AI-driven automation at Greenzero.
