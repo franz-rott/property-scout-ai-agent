@@ -142,15 +142,6 @@ docker-compose up --build
 
 -----
 
-## 📹 Video Demonstration
-
-<div align="center">
-  <h3>Video Demonstration</h3>
-  <img src="assets/demo.gif" alt="A short demo of the Greenzero AI Agent in action, showing a user query and the agent's response with a structured evaluation." style="width: 100%; max-width: 600px;">
-</div>
-
------
-
 ## ⏭️ Future Enhancements
 
 The current implementation provides a robust and demonstrable proof of concept. To transition this system to a production-ready solution, the following steps are planned:
