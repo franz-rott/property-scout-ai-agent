@@ -1,101 +1,129 @@
-# Greenzero Property Scout AI Agent
+-----
+
+# Greenzero Land Scouting Agent (`Flächensuch-Agent`)
 
 ## 🌍 Mission Overview
 
-Greenzero is a company dedicated to ecological rebuilding and sustainable land use. A core part of their mission involves identifying and acquiring land plots with high potential for ecological restoration, biodiversity enhancement, and climate impact mitigation.
+Greenzero is dedicated to ecological rebuilding and sustainable land use. A key part of their business is identifying and acquiring land with high potential for ecological restoration, biodiversity enhancement, and climate impact mitigation.
 
-This project, the **Flächensuch-Agent (Land Scouting Agent)**, is a modular, multi-agent AI system designed to automate and enhance Greenzero's land acquisition pipeline. By systematically scouting, evaluating, and prioritizing land listings, this system empowers Greenzero to make faster, data-driven decisions that align with its ecological and financial goals.
+This project, the **Land Scouting Agent**, is an autonomous AI system designed to streamline and enhance Greenzero's land acquisition pipeline. By systematically scouting, evaluating, and prioritizing land listings from a conversational interface, this system enables Greenzero to make faster, data-driven decisions that align with its ecological and financial goals.
 
-## 🎯 System Goal
+This solution demonstrates how multi-agent AI architectures can augment decision-making in sustainable land investment, fulfilling the core requirements of the AI Automation Engineer role.
 
-The primary goal is to build an autonomous agent system that:
-1.  **Scouts Daily**: Fetches new land listings daily from ImmoScout24 for the Nordrhein-Westfalen (NRW) region.
-2.  **Filters Listings**: Applies Greenzero's specific criteria (min size: 5,000 m², max price/m²: 150 €, specific plot types).
-3.  **Evaluates Holistically**: Assesses each promising property from three critical perspectives: ecological impact, legal compliance, and financial viability.
-4.  **Provides Actionable Insights**: Produces a structured JSON report with a clear recommendation, an overall score, and an executive summary for each evaluated property.
+-----
+
+## 🎯 System Goals
+
+The primary goal of this project is to build a `Flächensuch-Agent` that:
+
+1.  **Scouts on Command**: Explores land listings from ImmoScout24 via a chat interface.
+2.  **Evaluates Holistically**: Assesses each promising property from three critical perspectives: ecological potential, legal compliance, and financial feasibility.
+3.  **Provides Actionable Insights**: Produces a structured, transparent evaluation for each property that Greenzero can use to prioritize acquisitions.
+4.  **Enables Conversation**: Allows for user conversations, including asking follow-up and detail questions about the evaluations.
+
+-----
+
+## 🏗️ Technical Architecture and Logic
+
+The system is built as a multi-agent cooperative architecture, where a central **Orchestrator Agent** delegates specialized tasks to a team of sub-agents. This approach ensures each aspect of the evaluation is handled by an expert, while maintaining a single, conversational point of contact for the user. Agents interact via **LangGraph**, and their respective tools are implemented using **MCP (Modular Code Platform)**.
+
+### Agent Workflow
+
+1.  **User Input**: The user provides a property listing URL via a chat interface.
+2.  **Orchestrator Agent**: The main agent receives the request and recognizes the need to get property details. It calls the `ImmoScout` tool to scrape the data.
+3.  **Dispatch**: The Orchestrator then dispatches the property details to three specialist sub-agents in parallel:
+      * **🌱 ECO Impact Agent**: Evaluates the ecological potential of the land by using the `Copernicus` and `SerpAPI` tools.
+      * **⚖️ Legal Compliance Agent**: Checks for legal restrictions and zoning laws by using the `INSPIRE` and `SerpAPI` tools.
+      * **💰 Financial Viability Agent**: Analyzes the asking price against market data using the `SerpAPI` tool.
+4.  **Aggregation**: Once all sub-agents have completed their tasks, the Orchestrator aggregates their individual evaluations (scores and summaries).
+5.  **Final Output**: The Orchestrator synthesizes the findings into a single, comprehensive report presented to the user.
+
+### Multi-Agent Schema
+
+```mermaid
+graph TD
+    A[User] --> B(Orchestrator Agent);
+    B --> C{ImmoScout API};
+    C --> B;
+    B --> D[ECO Agent];
+    B --> E[Legal Agent];
+    B --> F[Finance Agent];
+    D --> G{Copernicus API};
+    D --> I{SerpAPI};
+    E --> H{INSPIRE API};
+    E --> I;
+    F --> I;
+    G --> D;
+    H --> E;
+    I --> D & E & F;
+    D --> B;
+    E --> B;
+    F --> B;
+    B --> J[Evaluation Report];
+    J --> A;
+```
+
+-----
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- Docker and Docker Compose
-- An OpenAI API Key
-- API keys for ImmoScout24, SerpAPI, Copernicus, and INSPIRE
+
+  * Node.js (v18 or higher)
+  * Docker and Docker Compose
+  * An OpenAI API Key
+  * API keys for ImmoScout24, SerpAPI, Copernicus, and INSPIRE (Mocks are provided for demonstration purposes, but real keys will be needed for live data.)
 
 ### Installation
+
 1.  Clone the repository:
+
     ```bash
-    git clone <repository-url>
-    cd property-scout-ai-agent
+    git clone https://github.com/your-username/greenzero-ai-agent.git
+    cd greenzero-ai-agent
     ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Set up your environment variables:
+
+2.  Set up your environment variables:
+
     ```bash
     cp .env.example .env
     # Edit .env with your API keys and desired ports
     ```
 
 ### Running the System
-To run the daily scouting and evaluation process:
+
+For local development:
+
 ```bash
+npm install
 npm run dev
 ```
-To build and run the production version:
 
-```bash
-npm run build
-npm start#
-```
+For a production-ready setup with microservices:
 
-Running with Docker
-The entire system, including the MCP servers, can be orchestrated with Docker Compose:
 ```bash
 docker-compose up --build
 ```
 
-**File: `docs/ARCHITECTURE.md`**
-# System Architecture
+-----
 
-This project is designed as a modular, multi-agent AI system with a clear separation of concerns. The architecture prioritizes scalability, maintainability, and extensibility.
+## 📹 Video Demonstration
 
-## Core Components
+\<div align="center"\>
+\<h3\>Video Demo Placeholder\</h3\>
+\<p\>A short video demonstrating the agent's capabilities will be placed here.\</p\>
+\</div\>
 
-The system is composed of four main layers:
+-----
 
-1.  **Data Ingestion**: A dedicated service that fetches new property listings from ImmoScout24 daily.
-2.  **MCP (Model Context Protocol) Servers**: A set of microservices that wrap external APIs, providing a standardized interface for the AI agents to access tools.
-3.  **AI Agents**: Specialized agents, each with a distinct role (ECO, Legal, Finance), responsible for evaluating a property from their specific domain.
-4.  **Orchestrator**: A central agent, built with LangGraph, that manages the evaluation workflow, delegates tasks to the specialized agents, and aggregates their findings into a final report.
+## ⏭️ Future Enhancements
 
-## Agent Orchestration with LangGraph
+The current implementation provides a robust and demonstrable proof of concept. To transition this system to a production-ready solution, the following steps are planned:
 
-The core of the system is the **Orchestrator Agent**, which functions as a state machine implemented using **LangGraph**. The workflow for a single property listing is as follows:
+  * **Integrate Live APIs**: Replace the mock MCP servers with actual API integrations for ImmoScout24, Copernicus, INSPIRE, and SerpAPI.
+  * **Implement a Scheduled Job**: Add a daily Cron job to autonomously scout for new listings and save the structured evaluations without requiring manual intervention.
+  * **Validate Parameters**: Collaborate with Greenzero stakeholders to fine-tune the search parameters (e.g., minimum size, maximum price) and evaluation criteria.
+  * **Enhanced Reporting**: Develop a more advanced reporting system to store, search, and visualize evaluations, potentially with a dashboard or database integration.
+  * **Error Handling**: Implement more robust error handling for API failures and edge cases.
 
-1.  **Start**: The orchestrator receives a new property listing.
-2.  **Delegate**: The orchestrator invokes the three sub-agents (ECO, Legal, Finance) in parallel.
-3.  **Evaluate**: Each sub-agent performs its analysis by calling its dedicated tools (e.g., Copernicus API for the ECO agent) via the MCP servers. They can also use the general-purpose SerpAPI tool for additional research.
-4.  **Aggregate**: The orchestrator waits for all sub-agents to complete their evaluations.
-5.  **Synthesize**: The orchestrator aggregates the individual scores and summaries, calculates a weighted overall score, and generates a final recommendation and executive summary.
-6.  **End**: The final, structured JSON output is produced and can be stored or exported.
-
-![Diagram of the agent orchestration flow]
-
-## MCP (Model Context Protocol) for Tool Access
-
-To ensure modularity and control, all external tools are wrapped in their own dedicated **MCP (Model Context Protocol) servers**.
-
--   **What is MCP?** MCP is a design pattern where each tool (API) is exposed via a simple, standardized microservice. This decouples the agents from the specific implementation details of the tools.
--   **Benefits**:
-    -   **Isolation**: If an API changes, only its corresponding MCP server needs to be updated.
-    -   **Security**: API keys are stored securely within their respective servers, not exposed to the agents.
-    -   **Scalability**: Each server can be scaled independently.
-    -   **Standardization**: All agents communicate with tools using a consistent client, simplifying agent logic.
-
-The four MCP servers in this system are:
--   `immoscout-server.ts`
--   `serpapi-server.ts`
--   `copernicus-server.ts`
--   `inspire-server.ts`
+This project is not just about building a single agent, but about establishing a scalable, maintainable, and powerful foundation for AI-driven automation at Greenzero.
