@@ -1,6 +1,4 @@
------
-
-# Greenzero Land Scouting Agent (`Flächensuch-Agent`)
+## Greenzero Land Scouting Agent (`Flächensuch-Agent`)
 
 ## 🌍 Mission Overview
 
@@ -31,7 +29,7 @@ The system is built as a multi-agent cooperative architecture, where a central *
 
 1.  **User Input**: The user provides a property listing URL via a chat interface.
 2.  **Orchestrator Agent**: The main agent receives the request and recognizes the need to get property details. It calls the `ImmoScout` tool to scrape the data.
-3.  **Dispatch**: The Orchestrator then dispatches the property details to three specialist sub-agents in parallel:
+3.  **Dispatch**: The Orchestrator then dispatches the property details to three specialist sub-agents:
       * **🌱 ECO Impact Agent**: Evaluates the ecological potential of the land by using the `Copernicus` and `SerpAPI` tools.
       * **⚖️ Legal Compliance Agent**: Checks for legal restrictions and zoning laws by using the `INSPIRE` and `SerpAPI` tools.
       * **💰 Financial Viability Agent**: Analyzes the asking price against market data using the `SerpAPI` tool.
@@ -42,26 +40,63 @@ The system is built as a multi-agent cooperative architecture, where a central *
 
 ```mermaid
 graph TD
-    A[User] --> B(Orchestrator Agent);
-    B --> C{ImmoScout API};
-    C --> B;
-    B --> D[ECO Agent];
-    B --> E[Legal Agent];
-    B --> F[Finance Agent];
-    D --> G{Copernicus API};
-    D --> I{SerpAPI};
-    E --> H{INSPIRE API};
-    E --> I;
-    F --> I;
-    G --> D;
-    H --> E;
-    I --> D & E & F;
-    D --> B;
-    E --> B;
-    F --> B;
-    B --> J[Evaluation Report];
-    J --> A;
+    subgraph "Core Agent Architecture"
+        direction LR
+        A(User)
+        B[Orchestrator Agent]
+        C[Evaluation Report]
+    end
+
+    subgraph "Specialist Sub-Agents"
+        direction TB
+        D[🌱 ECO Agent]
+        E[⚖️ Legal Agent]
+        F[💰 Finance Agent]
+    end
+
+    subgraph "MCP Tool Servers"
+        direction TB
+        I[SerpAPI]
+        H[INSPIRE API]
+        G[Copernicus API]
+        J[ImmoScout API]
+    end
+
+    A --> B
+    B --> J
+    J --> B
+    B --> D & E & F
+    D --> G & I
+    E --> H & I
+    F --> I
+    G --> D
+    H --> E
+    I --> D & E & F
+    D & E & F --> B
+    B --> C
+    C --> A
 ```
+
+This diagram illustrates the flow of a user request from the `Orchestrator Agent` to the `Specialist Sub-Agents` and their respective `MCP Tool Servers`, with the final report being returned to the user.
+
+-----
+
+## 📁 Repository Structure
+
+The project follows a modular structure to ensure maintainability and clarity.
+
+  * `src/`: Contains the core application code.
+      * `agents/`: Houses the specialized AI agents (`eco`, `legal`, `finance`) and the central `orchestrator`.
+      * `mcp/`: Manages the **Modular Code Platform**. The `servers/` directory contains the microservices for each external API, and `client.ts` provides the standardized interface for agents to call these services.
+      * `tools/`: Defines the **LangChain tools** that wrap the MCP clients. This is how the agents access external functionality.
+      * `types/`: Centralizes all TypeScript interfaces and Zod schemas for data validation.
+      * `utils/`: Holds utility functions, including configuration management and logging.
+      * `index.ts`: The main entry point for the application.
+  * `docs/`: Contains project documentation, including this README.
+  * `public/`: Holds the static files for the chat interface.
+  * `evaluations/`: A placeholder for generated evaluation reports.
+  * `.env.example`: A template for environment variables.
+  * `docker-compose.yml`: Defines the multi-container Docker application.
 
 -----
 
@@ -110,8 +145,9 @@ docker-compose up --build
 ## 📹 Video Demonstration
 
 \<div align="center"\>
-\<h3\>Video Demo Placeholder\</h3\>
-\<p\>A short video demonstrating the agent's capabilities will be placed here.\</p\>
+\<h3\>Demo\</h3\>
+\<img src="assets/demo.gif" alt="Watch a video demonstration of the Greenzero AI Agent on YouTube" style="width: 100%; max-width: 600px;"\>
+\</a\>
 \</div\>
 
 -----
@@ -125,5 +161,6 @@ The current implementation provides a robust and demonstrable proof of concept. 
   * **Validate Parameters**: Collaborate with Greenzero stakeholders to fine-tune the search parameters (e.g., minimum size, maximum price) and evaluation criteria.
   * **Enhanced Reporting**: Develop a more advanced reporting system to store, search, and visualize evaluations, potentially with a dashboard or database integration.
   * **Error Handling**: Implement more robust error handling for API failures and edge cases.
+  * **Evals**: Develop robust evaluation metrics for progress and performance measurement.
 
 This project is not just about building a single agent, but about establishing a scalable, maintainable, and powerful foundation for AI-driven automation at Greenzero.

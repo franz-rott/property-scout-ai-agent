@@ -19,10 +19,17 @@ const serpApiClient = new McpClient(getServiceUrl());
 
 export const serpApiTool = new DynamicStructuredTool({
   name: 'webSearch',
-  description:
-    'Performs a web search to find up-to-date information, news, or context on a given topic. Input should be a concise search query.',
+  description: `
+    Performs a web search to find current information on any topic. Use this when:
+    - The user asks about current events, news, or recent developments
+    - You need specific information about German regulations or local laws
+    - Market data, prices, or economic information is required
+    - You need to research topics not covered by the specialist tools
+    - The user asks general questions about land development, ecology, or sustainability
+    This is a versatile tool for gathering any web-based information.
+  `,
   schema: z.object({
-    query: z.string().describe('The search query to execute.'),
+    query: z.string().describe('The search query to execute. Be specific and concise.'),
   }),
   func: async ({ query }) => {
     try {

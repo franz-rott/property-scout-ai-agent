@@ -19,8 +19,13 @@ const immoScoutClient = new McpClient(getServiceUrl());
 
 export const immoScoutScraperTool = new DynamicStructuredTool({
   name: 'scrapeImmoScoutListing',
-  description:
-    'Fetches (scrapes) the details of a single property listing from an Immobilienscout24 URL. This should be the first step in any property evaluation.',
+  description: `
+    Fetches detailed information about a property from an Immobilienscout24 URL. Use this when:
+    - The user provides a specific ImmoScout24 property URL
+    - You need to get property details like size, price, location, and coordinates
+    - Before conducting any property evaluation that requires specific property data
+    This provides the foundational data that specialist agents might need.
+  `,
   schema: z.object({
     url: z
       .string()

@@ -19,11 +19,18 @@ const inspireClient = new McpClient(getServiceUrl());
 
 export const inspireApiTool = new DynamicStructuredTool({
   name: 'getRegulatoryData',
-  description:
-    'Fetches legal and regulatory data for a specific geographic location (latitude and longitude). Use this to check for zoning laws, protected area status, and other land-use restrictions.',
+  description: `
+    Fetches official regulatory and legal data for a specific location from government databases. Use this when:
+    - You have geographic coordinates and need official zoning information
+    - Checking for protected area designations (Natura 2000, nature reserves)
+    - Verifying land use classifications from official sources
+    - Identifying regulatory restrictions or compliance requirements
+    - You need authoritative government data rather than general web information
+    This provides official regulatory status from European and German databases.
+  `,
   schema: z.object({
-    latitude: z.number().describe('The latitude of the property.'),
-    longitude: z.number().describe('The longitude of the property.'),
+    latitude: z.number().describe('The latitude coordinate for regulatory lookup.'),
+    longitude: z.number().describe('The longitude coordinate for regulatory lookup.'),
   }),
   func: async ({ latitude, longitude }) => {
     try {

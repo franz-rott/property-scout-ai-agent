@@ -16,7 +16,7 @@ const SpecialistToolSchema = z.object({
   propertyDetails: z
     .string()
     .describe(
-      'A JSON string containing the full details of the property listing.'
+      'A JSON string containing the details of the property or the specific question/context for evaluation.'
     ),
 });
 
@@ -34,7 +34,7 @@ async function runSpecialistAgent(
   }
   
   const result = await agent.invoke({
-    input: `Evaluate the property with these details: ${propertyDetails}`,
+    input: propertyDetails,
   });
 
   // Map intermediate steps to include tool, input, output
@@ -55,13 +55,24 @@ async function runSpecialistAgent(
 
 export const ecoImpactTool = new DynamicStructuredTool({
   name: 'evaluateEcoImpact',
-  description:
-    'Invokes the ECO specialist agent to evaluate the ecological potential of a property.',
+  description: `
+    Invokes the ECO specialist agent for ecological assessment. Use this when:
+    - The user asks about ecological aspects of a property
+    - You need to assess land degradation, restoration potential, or biodiversity
+    - Environmental impact analysis is required
+    - The user mentions sustainability, nature conservation, or ecological value
+    The agent will autonomously decide what additional data it needs.
+  `,
   schema: SpecialistToolSchema,
   func: async ({ propertyDetails }) => {
     logger.info('🌱 ECO Impact Tool invoked');
     try {
-      const { agent, result } = await runSpecialistAgent(ecoAgentExecutorPromise, ecoAgent, propertyDetails, 'ECO');
+      const { agent, result } = await runSpecialistAgent(
+        ecoAgentExecutorPromise, 
+        ecoAgent, 
+        propertyDetails, 
+        'ECO'
+      );
       if (!ecoAgent) ecoAgent = agent;
 
       const finalResult = {
@@ -80,13 +91,24 @@ export const ecoImpactTool = new DynamicStructuredTool({
 
 export const legalTool = new DynamicStructuredTool({
   name: 'evaluateLegalCompliance',
-  description:
-    'Invokes the Legal specialist agent to evaluate the legal viability of acquiring a property.',
+  description: `
+    Invokes the Legal specialist agent for regulatory assessment. Use this when:
+    - The user asks about zoning, permits, or legal restrictions
+    - You need to assess compliance with German land use laws
+    - There are questions about protected areas or building regulations
+    - Legal risks or opportunities need to be evaluated
+    The agent will autonomously determine what legal research is needed.
+  `,
   schema: SpecialistToolSchema,
   func: async ({ propertyDetails }) => {
     logger.info('⚖️ Legal Compliance Tool invoked');
     try {
-      const { agent, result } = await runSpecialistAgent(legalAgentExecutorPromise, legalAgent, propertyDetails, 'Legal');
+      const { agent, result } = await runSpecialistAgent(
+        legalAgentExecutorPromise, 
+        legalAgent, 
+        propertyDetails, 
+        'Legal'
+      );
       if (!legalAgent) legalAgent = agent;
       
       const finalResult = {
@@ -105,13 +127,24 @@ export const legalTool = new DynamicStructuredTool({
 
 export const financeTool = new DynamicStructuredTool({
   name: 'evaluateFinancialViability',
-  description:
-    'Invokes the Finance specialist agent to evaluate the financial viability of a property.',
+  description: `
+    Invokes the Finance specialist agent for economic assessment. Use this when:
+    - The user asks about pricing, value, or investment potential
+    - Market comparison or ROI analysis is needed
+    - Questions about subsidies, grants, or financial incentives arise
+    - Cost-benefit analysis is required
+    The agent will autonomously decide what market research to conduct.
+  `,
   schema: SpecialistToolSchema,
   func: async ({ propertyDetails }) => {
     logger.info('💰 Financial Viability Tool invoked');
     try {
-      const { agent, result } = await runSpecialistAgent(financeAgentExecutorPromise, financeAgent, propertyDetails, 'Finance');
+      const { agent, result } = await runSpecialistAgent(
+        financeAgentExecutorPromise, 
+        financeAgent, 
+        propertyDetails, 
+        'Finance'
+      );
       if (!financeAgent) financeAgent = agent;
       
       const finalResult = {
